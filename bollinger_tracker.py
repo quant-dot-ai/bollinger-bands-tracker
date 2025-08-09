@@ -14,6 +14,7 @@ import time
 import logging
 from typing import List, Dict, Tuple
 import json
+import os
 
 # Configure logging
 logging.basicConfig(
@@ -509,6 +510,12 @@ def main():
     # You need to set up Google Sheets API credentials
     # Download the credentials JSON file from Google Cloud Console
     CREDENTIALS_FILE = "credentials.json"
+    
+    # Check if credentials file exists, if not running in GitHub Actions
+    if not os.path.exists(CREDENTIALS_FILE):
+        logging.error(f"Credentials file {CREDENTIALS_FILE} not found!")
+        logging.info("Make sure credentials.json is in the same directory as this script")
+        return
     
     # Initialize tracker
     tracker = BollingerBandsTracker(CREDENTIALS_FILE)
