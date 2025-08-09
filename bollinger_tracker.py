@@ -7,7 +7,7 @@ Fetches stock data and updates Google Sheets with Bollinger Band analysis
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import gspread
 from google.oauth2.service_account import Credentials
 import time
@@ -341,7 +341,10 @@ class BollingerBandsTracker:
             
             # Add title
             all_data.append([f'📊 {sheet_name}'])
-            all_data.append([f'Last Updated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'])
+            # Convert UTC to IST (UTC + 5:30)
+            ist_timezone = timezone(timedelta(hours=5, minutes=30))
+            ist_time = datetime.now(timezone.utc).astimezone(ist_timezone)
+            all_data.append([f'Last Updated: {ist_time.strftime("%Y-%m-%d %H:%M:%S IST")}'])
             all_data.append([])  # Empty row
             all_data.append(headers)  # Headers
             
@@ -389,6 +392,12 @@ class BollingerBandsTracker:
         # Get stocks organized by sheet
         stocks_by_sheet = self.get_stocks_by_sheet()
         
+        # Check if any stocks were found
+        total_stocks = sum(len(stocks) for stocks in stocks_by_sheet.values())
+        if total_stocks == 0:
+            logging.error("No stocks found in any sheet! Please check your Google Sheet has the required sheets: " + ", ".join(Config.STOCK_SHEETS))
+            return
+        
         # Process each sheet separately
         for sheet_name, stocks in stocks_by_sheet.items():
             if not stocks:
@@ -432,6 +441,12 @@ class BollingerBandsTracker:
         
         # Get stocks organized by sheet
         stocks_by_sheet = self.get_stocks_by_sheet()
+        
+        # Check if any stocks were found
+        total_stocks = sum(len(stocks) for stocks in stocks_by_sheet.values())
+        if total_stocks == 0:
+            logging.error("No stocks found in any sheet! Please check your Google Sheet has the required sheets: " + ", ".join(Config.STOCK_SHEETS))
+            return
         
         # Process each sheet separately
         for sheet_name, stocks in stocks_by_sheet.items():
