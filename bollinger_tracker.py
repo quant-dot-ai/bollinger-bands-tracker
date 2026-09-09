@@ -117,10 +117,14 @@ class BollingerBandsTracker:
         upper_band = sma + (Config.BB_STD * std)
         lower_band = sma - (Config.BB_STD * std)
         
+        # 15-period SMA (separate from the BB period, just a reference MA)
+        sma_15 = prices.rolling(window=15).mean()
+        
         # Get latest values
         latest_idx = -1
         current_price = prices.iloc[latest_idx]
         sma_value = sma.iloc[latest_idx]
+        sma_15_value = sma_15.iloc[latest_idx]
         upper_value = upper_band.iloc[latest_idx]
         lower_value = lower_band.iloc[latest_idx]
         
@@ -145,6 +149,8 @@ class BollingerBandsTracker:
         return {
             'current_price': round(current_price, 2),
             'sma': round(sma_value, 2),
+            'sma_15': round(sma_15_value, 2) if pd.notna(sma_15_value) else None,
+            'bb_mid': round(sma_value, 2),
             'upper_band': round(upper_value, 2),
             'lower_band': round(lower_value, 2),
             'position': round(position, 1),
@@ -216,14 +222,14 @@ class BollingerBandsTracker:
                 df = self.fetch_daily_data(symbol)
                 if df is None or df.empty:
                     logging.warning(f"No daily data for {symbol}")
-                    results.append([display_symbol, "No Data", "-", "-", "-", "-", "-", "-", "-"])
+                    results.append([display_symbol, "No Data", "-", "-", "-", "-", "-", "-", "-", "-"])
                     continue
                 
                 # Calculate Bollinger Bands
                 bb = self.calculate_bollinger_bands(df['Close'])
                 if bb is None:
                     logging.warning(f"Insufficient data for {symbol} (got {len(df)} days)")
-                    results.append([display_symbol, "Insufficient Data", "-", "-", "-", "-", "-", "-", "-"])
+                    results.append([display_symbol, "Insufficient Data", "-", "-", "-", "-", "-", "-", "-", "-"])
                     continue
                 
                 # Calculate change %
@@ -242,7 +248,8 @@ class BollingerBandsTracker:
                     display_symbol,
                     bb['current_price'],
                     f"{change_pct:.2f}%",
-                    bb['sma'],
+                    bb['sma_15'] if bb['sma_15'] is not None else "-",
+                    bb['bb_mid'],
                     bb['upper_band'],
                     bb['lower_band'],
                     bb['signal'],
@@ -257,7 +264,7 @@ class BollingerBandsTracker:
                 
             except Exception as e:
                 logging.error(f"Error processing {symbol}: {str(e)}")
-                results.append([display_symbol, "Error", "-", "-", "-", "-", "-", "-", str(e)[:50]])
+                results.append([display_symbol, "Error", "-", "-", "-", "-", "-", "-", "-", str(e)[:50]])
         
         logging.info(f"Completed batch with {len(results)} results")
         return results
@@ -363,7 +370,7 @@ class BollingerBandsTracker:
                 worksheet.update('A1', all_data)
             
             # Format headers (row 4)
-            worksheet.format('A4:I4', {
+            worksheet.format('A4:J4', {
                 "backgroundColor": {"red": 0.26, "green": 0.52, "blue": 0.96},
                 "textFormat": {"foregroundColor": {"red": 1, "green": 1, "blue": 1}, "bold": True}
             })
@@ -426,7 +433,7 @@ class BollingerBandsTracker:
             
             # Update sheet only if we have results
             if all_results:
-                headers = ['Stock', 'Current Price', 'Change %', 'SMA(200)', 'Upper Band', 
+                headers = ['Stock', 'Current Price', 'Change %', 'SMA(15)', 'BB Mid', 'Upper Band', 
                           'Lower Band', 'Signal', 'Position', 'Volume']
                 self.update_sheet(output_sheet_name, all_results, headers)
             else:
